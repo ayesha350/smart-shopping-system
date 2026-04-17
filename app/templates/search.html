@@ -1,0 +1,386 @@
+{% comment %} <!DOCTYPE html>
+<html>
+<head>
+    <title>Results - {{ query }}</title>
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --success: #2ed573; --warning: #ffa502; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; }
+        
+        /* Navigation */
+        .navbar { background: white; padding: 15px 10%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .nav-links { display: flex; gap: 15px; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--dark); font-weight: 600; font-size: 14px; }
+
+        /* Filter Bar */
+        .filter-bar { background: white; padding: 10px 10%; display: flex; gap: 20px; border-top: 1px solid #eee; font-size: 14px; align-items: center; }
+        .filter-bar a { text-decoration: none; color: #555; padding: 6px 12px; border-radius: 20px; border: 1px solid #ddd; transition: 0.3s; }
+        .filter-bar a.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Product Grid */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; padding: 20px 10%; }
+        
+        /* Strict Product Card UI */
+        .product-card { background: white; border-radius: 15px; padding: 18px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; transition: transform 0.3s; }
+        .product-card:hover { transform: translateY(-5px); }
+        
+        /* Tags */
+        .tag-container { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 5px; z-index: 10; }
+        .tag { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tag-best { background: var(--success); }
+        .tag-fast { background: var(--blue); }
+
+        .prod-img { width: 100%; height: 200px; object-fit: contain; margin-bottom: 15px; }
+        .platform-name { font-size: 11px; color: var(--primary); margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .prod-name { font-size: 15px; margin: 8px 0; height: 42px; overflow: hidden; color: var(--dark); line-height: 1.4; font-weight: 600; }
+        .rating-box { font-size: 13px; color: var(--warning); margin-bottom: 10px; font-weight: bold; }
+        
+        .price-container { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .price-inr { font-size: 22px; font-weight: 800; color: var(--dark); }
+        .discount-pct { color: var(--success); font-size: 14px; font-weight: 700; background: #e8fcf0; padding: 2px 6px; border-radius: 4px; }
+        
+        .delivery-time { font-size: 12px; color: #666; margin-bottom: 18px; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+        
+        /* Buttons */
+        .btn-group { display: flex; flex-direction: column; gap: 8px; }
+        .btn-action { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; text-decoration: none; text-align: center; transition: 0.2s; display: block; box-sizing: border-box; }
+        .btn-buy { background: var(--dark); color: white; }
+        .btn-buy:hover { background: #000; }
+        .btn-wish { background: white; border: 1.5px solid #eee; color: var(--dark); }
+        .btn-wish:hover { border-color: var(--primary); color: var(--primary); }
+        
+        /* Price Alert Section */
+        .alert-box { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; display: flex; gap: 5px; }
+        .alert-input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; outline: none; }
+        .btn-alert { background: var(--warning); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" style="font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; letter-spacing: -1px;">SmartShopping</a>
+        <div style="flex: 0.5;">{% include 'search_bar.html' %}</div>
+        <div class="nav-links">
+            {% if user.is_authenticated %}
+                <a href="{% url 'view_wishlist' %}">❤️ Wishlist</a>
+                <a href="{% url 'price_alerts' %}">🔔 Alerts</a>
+                <a href="{% url 'cart' %}">🛒 Cart</a>
+                <a href="{% url 'logout' %}">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="filter-bar">
+        <span style="font-weight: 700; color: #888;">SORT BY:</span>
+        <a href="?q={{ query }}&sort=relevance" class="{% if sort == 'relevance' %}active{% endif %}">Most Relevant</a>
+        <a href="?q={{ query }}&sort=price_low" class="{% if sort == 'price_low' %}active{% endif %}">Lowest Price</a>
+        <span style="margin-left: auto; color: #888; font-size: 12px;">📍 Results for <b>{{ location|default:"India" }}</b></span>
+    </div>
+
+    <div class="product-grid">
+        {% for item in products %}
+        <div class="product-card">
+            <div class="tag-container">
+                {% if item.best_deal %}<span class="tag tag-best">Best Deal</span>{% endif %}
+                {% if item.fast_delivery %}<span class="tag tag-fast">Fastest Delivery</span>{% endif %}
+            </div>
+
+            <img src="{{ item.thumbnail }}" class="prod-img" alt="{{ item.title }}">
+
+            <p class="platform-name">{{ item.source }}</p>
+            <div class="rating-box">⭐ {{ item.rating|default:"4.0" }}</div>
+
+            <h3 class="prod-name">{{ item.title|truncatechars:65 }}</h3>
+
+            <div class="price-container">
+                <span class="price-inr">{{ item.price }}</span>
+                {% if item.discount %}
+                <span class="discount-pct">{{ item.discount }}</span>
+                {% endif %}
+            </div>
+
+            <div class="delivery-time">🚚 Delivery: <b>{{ item.delivery }}</b></div>
+            
+            <div class="btn-group">
+                <a href="{{ item.link }}" target="_blank" class="btn-action btn-buy">Buy Now on {{ item.source }}</a>
+                
+                <form action="{% url 'add_to_wishlist' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_data" value='{{ item.json_data }}'>
+                    <button type="submit" class="btn-action btn-wish">Save to Wishlist ❤️</button>
+                </form>
+            </div>
+
+            <form action="{% url 'set_price_alert' %}" method="POST" class="alert-box">
+                {% csrf_token %}
+                <input type="hidden" name="product_name" value="{{ item.title }}">
+                <input type="number" name="target_price" class="alert-input" placeholder="Alert at ₹..." required>
+                <button type="submit" class="btn-alert">🔔</button>
+            </form>
+        </div>
+        {% empty %}
+        <div style="grid-column: span 3; text-align: center; padding: 100px 0;">
+            <h2 style="color: #ccc;">No authentic results found for "{{ query }}".</h2>
+            <p>Try searching for a specific product or brand.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html> {% endcomment %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results - {{ query }}</title>
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --success: #2ed573; --warning: #ffa502; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; }
+        
+        /* Navigation */
+        .navbar { background: white; padding: 15px 10%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .nav-links { display: flex; gap: 15px; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--dark); font-weight: 600; font-size: 14px; }
+
+        /* Filter Bar */
+        .filter-bar { background: white; padding: 10px 10%; display: flex; gap: 12px; border-top: 1px solid #eee; font-size: 13px; align-items: center; flex-wrap: wrap; }
+        .filter-bar a { text-decoration: none; color: #555; padding: 6px 15px; border-radius: 20px; border: 1px solid #ddd; transition: 0.3s; font-weight: 500; }
+        .filter-bar a.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Product Grid */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; padding: 20px 10%; }
+        
+        /* Product Card UI */
+        .product-card { background: white; border-radius: 15px; padding: 18px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; transition: 0.3s; border: 1px solid transparent; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        /* AI Recommended Special Styling */
+        .recommended-border { border: 2px solid var(--primary) !important; transform: scale(1.02); z-index: 5; background: #fffcfc; }
+        .recommended-badge { position: absolute; top: -12px; left: 15px; background: var(--primary); color: white; padding: 5px 12px; border-radius: 5px; font-size: 11px; font-weight: 800; z-index: 20; box-shadow: 0 4px 8px rgba(255, 71, 87, 0.3); }
+
+        /* Tags */
+        .tag-container { position: absolute; top: 15px; right: 12px; display: flex; flex-direction: column; gap: 5px; z-index: 10; }
+        .tag { padding: 4px 10px; border-radius: 4px; font-size: 9px; font-weight: 800; color: white; text-transform: uppercase; }
+        .tag-best { background: var(--success); }
+        .tag-fast { background: var(--blue); }
+
+        .prod-img { width: 100%; height: 200px; object-fit: contain; margin-bottom: 15px; border-radius: 8px; }
+        .platform-name { font-size: 11px; color: var(--primary); margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .prod-name { font-size: 15px; margin: 8px 0; height: 42px; overflow: hidden; color: var(--dark); line-height: 1.4; font-weight: 600; }
+        .rating-box { font-size: 13px; color: var(--warning); margin-bottom: 10px; font-weight: bold; }
+        
+        .price-container { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .price-inr { font-size: 22px; font-weight: 800; color: var(--dark); }
+        .discount-pct { color: var(--success); font-size: 13px; font-weight: 700; background: #e8fcf0; padding: 2px 8px; border-radius: 4px; }
+        
+        .delivery-time { font-size: 12px; color: #666; margin-bottom: 18px; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+        
+        /* Buttons */
+        .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+        .btn-action { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; text-decoration: none; text-align: center; transition: 0.2s; display: block; box-sizing: border-box; }
+        .btn-buy { background: var(--dark); color: white; }
+        .btn-buy:hover { background: #000; }
+        .btn-wish { background: white; border: 1.5px solid #eee; color: var(--dark); }
+        .btn-wish:hover { border-color: var(--primary); color: var(--primary); }
+        
+        /* Price Alert Section */
+        .alert-box { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; display: flex; gap: 5px; }
+        .alert-input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; outline: none; }
+        .btn-alert { background: var(--warning); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+
+        /* Card Layout Fix */
+        .product-card {
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 180px;
+            object-fit: contain;
+        }
+
+        .product-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            height: 40px;
+            overflow: hidden;
+        }
+
+        .price-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        .current-price {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3436;
+        }
+
+        .discount-tag {
+            color: #eb4d4b;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .delivery-text {
+            font-size: 11px;
+            color: #636e72;
+        }
+
+        .btn-buy {
+            background: #000;
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            flex: 1;
+            text-align: center;
+        }
+
+        /* AI Recommended Special Styling */
+        .recommended-border {
+            border: 2px solid #ff4757 !important;
+            transform: scale(1.02);
+            box-shadow: 0 10px 20px rgba(255, 71, 87, 0.15);
+        }
+
+        .recommended-badge {
+            position: absolute;
+            top: -12px;
+            left: 10px;
+            background: #ff4757;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            z-index: 100; /* Isse badge image ke upar dikhega */
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" style="font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; letter-spacing: -1px;">SmartShopping</a>
+        <div style="flex: 0.5;">{% include 'search_bar.html' %}</div>
+        <div class="nav-links">
+            {% if user.is_authenticated %}
+                <a href="{% url 'view_wishlist' %}">❤️ Wishlist</a>
+                <a href="{% url 'price_alerts' %}">🔔 Alerts</a>
+                <a href="{% url 'cart' %}">🛒 Cart</a>
+                <a href="{% url 'logout' %}">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="filter-bar">
+        <span style="font-weight: 700; color: #888;">SORT BY:</span>
+        <a href="?q={{ query }}&sort=relevance" class="{% if sort == 'relevance' %}active{% endif %}">Most Relevant</a>
+        <a href="?q={{ query }}&sort=price" class="{% if sort == 'price' %}active{% endif %}">Lowest Price</a>
+        <a href="?q={{ query }}&sort=discount" class="{% if sort == 'discount' %}active{% endif %}">Highest Discount</a>
+        <a href="?q={{ query }}&sort=delivery" class="{% if sort == 'delivery' %}active{% endif %}">Fastest Delivery</a>
+        <a href="?q={{ query }}&sort=rating" class="{% if sort == 'rating' %}active{% endif %}">Top Rated</a>
+        <span style="margin-left: auto; color: #888; font-size: 12px;">📍 Results for <b>{{ location|default:"India" }}</b></span>
+    </div>
+
+    <div class="product-grid">
+    {% for item in products %}
+    <div class="product-card {% if item.recommended %}recommended-border{% endif %}">
+        
+        {% if item.recommended %}
+            <div class="recommended-badge">
+                <i class="fas fa-magic"></i> AI RECOMMENDED
+            </div>
+        {% endif %}
+
+        <div class="tag-container">
+            {% if item.best_deal %}<span class="tag tag-best">Best Deal</span>{% endif %}
+            {% if item.fast_delivery %}<span class="tag tag-fast">Fastest Delivery</span>{% endif %}
+        </div>
+
+        <img src="{{ item.thumbnail }}" class="prod-img" alt="{{ item.title }}">
+
+        <p class="platform-name">{{ item.source }}</p>
+        <div class="rating-box">⭐ {{ item.rating|default:"4.0" }}</div>
+
+        <h3 class="prod-name">{{ item.title|truncatechars:65 }}</h3>
+
+        <div class="price-container">
+            <span class="price-inr">{{ item.price }}</span>
+
+            {% if item.discount and item.discount != "0% OFF" %}
+                <span class="discount-pct">{{ item.discount }}</span>
+            {% endif %}
+        </div>
+
+        <div class="delivery-time">🚚 {{ item.delivery }}</div>
+        
+        <div class="btn-group">
+            <a href="{{ item.link }}" target="_blank" class="btn-action btn-buy">Buy Now on {{ item.source }}</a>
+            
+            <form action="{% url 'add_to_cart' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="product_data" value='{{ item.json_data }}'>
+                <button type="submit" class="btn-action" style="background: var(--blue); color: white; margin-top: 5px;">
+                    Add to Cart 🛒
+                </button>
+            </form>
+
+            <form action="{% url 'add_to_wishlist' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="product_data" value='{{ item.json_data }}'>
+                <button type="submit" class="btn-action btn-wish">Save to Wishlist ❤️</button>
+            </form>
+        </div>
+
+        <form action="{% url 'set_price_alert' %}" method="POST" class="alert-box">
+            {% csrf_token %}
+            <input type="hidden" name="product_name" value="{{ item.title }}">
+            <input type="number" name="target_price" class="alert-input" placeholder="Alert at ₹..." required>
+            <button type="submit" class="btn-alert">🔔</button>
+        </form>
+    </div>
+    {% empty %}
+    <div style="grid-column: span 3; text-align: center; padding: 100px 0;">
+        <h2 style="color: #ccc;">No results found for "{{ query }}".</h2>
+    </div>
+    {% endfor %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+{% if messages %}
+    <script>
+        {% for message in messages %}
+            Swal.fire({
+                title: 'Success!',
+                text: "{{ message }}",
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+                timerProgressBar: true
+            });
+        {% endfor %}
+    </script>
+{% endif %}
+
+</body>
+</html>
+ 

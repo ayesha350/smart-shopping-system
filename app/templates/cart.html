@@ -1,0 +1,664 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Shopping Cart & Comparison - SmartShopping</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        /* Layout Styles */
+        .cart-container { padding: 40px 10%; min-height: 80vh; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: bold; }
+
+        /* Comparison Box */
+        .comparison-box { background: #fff8e1; border: 2px dashed #ffa502; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+        .comparison-box h3 { margin-top: 0; color: #d35400; }
+
+        /* Cart Items */
+        .cart-item { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .cart-item img { width: 100px; height: 100px; object-fit: contain; border-radius: 8px; }
+        .cart-details { flex: 1; }
+        .cart-details h4 { margin: 0 0 8px 0; color: #2d3436; font-size: 16px; }
+        .cart-meta { font-size: 13px; color: #636e72; margin-bottom: 10px; }
+        .cart-price { font-size: 18px; font-weight: 700; color: var(--primary); }
+
+        /* Actions */
+        .cart-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
+        .remove-btn { 
+            background: none; 
+            color: var(--primary); 
+            text-decoration: none; 
+            font-size: 13px; 
+            font-weight: 600; 
+            border: 1px solid var(--primary); 
+            padding: 5px 12px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            transition: 0.3s; 
+        }
+        .remove-btn:hover { background: var(--primary); color: white; }
+
+        /* Summary & Checkout */
+        .cart-summary { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-top: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: right;
+        }
+        .checkout-btn { 
+            background: var(--dark); 
+            color: white; 
+            padding: 12px 30px; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            display: inline-block; 
+            margin-top: 15px; 
+            font-weight: 700;
+        }
+        
+        /* Empty State */
+        .empty-cart { text-align: center; padding: 100px 0; background: white; border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="cart-container">
+    <div class="cart-header">
+        <div>
+            <a href="/" class="back-link">← Continue Shopping</a>
+            <h1>Your Shopping Cart & Comparison 🛒</h1>
+        </div>
+    </div>
+
+    {% if comparison %}
+    <div class="comparison-box">
+        <h3>📊 Smart Comparison Insight</h3>
+        <p style="font-size: 18px; color: #d35400;">{{ comparison }}</p>
+        <small>Note: Comparison is based on price, ratings, and delivery speed from your cart items.</small>
+    </div>
+    {% endif %}
+
+    {% if cart_items %}
+        {% for item in cart_items %}
+        <div class="cart-item">
+            <img src="{{ item.product_data.thumbnail }}" alt="product">
+            
+            <div class="cart-details">
+                <span style="font-size: 10px; text-transform: uppercase; color: var(--primary); font-weight: 800; letter-spacing: 1px;">
+                    {{ item.product_data.source }}
+                </span>
+                <h4>{{ item.product_data.title }}</h4>
+                <div class="cart-meta">
+                    Quantity: <b>{{ item.quantity }}</b> | 
+                    Added on: {{ item.added_at|date:"d M, Y" }}
+                </div>
+                <div class="cart-price">{{ item.product_data.price }}</div>
+            </div>
+
+            <div class="cart-actions">
+                <form action="{% url 'remove_from_cart' item.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="remove-btn">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="cart-summary">
+            <div style="font-size: 18px; color: #636e72;">Total Cart Value</div>
+            <div style="font-size: 32px; font-weight: 800; color: var(--dark);">₹{{ total_price }}</div>
+            <a href="#" class="checkout-btn">Proceed to Checkout</a>
+        </div>
+
+    {% else %}
+        <div class="empty-cart">
+            <img src="https://cdn-icons-png.flaticon.com/512/11329/11329060.png" style="width: 120px; opacity: 0.5;">
+            <h2 style="color: #ccc; margin-top: 20px;">Your cart is empty!</h2>
+            <p>Start adding products from search results to compare and buy them.</p>
+            <a href="/" class="checkout-btn" style="background: var(--primary);">Go to Search</a>
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html> {% endcomment %}
+
+{% comment %} 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Shopping Cart & Comparison - SmartShopping</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        /* Layout Styles */
+        .cart-container { padding: 40px 10%; min-height: 80vh; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: bold; }
+
+        /* Comparison Box */
+        .comparison-box { background: #fff8e1; border: 2px dashed #ffa502; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+        .comparison-box h3 { margin-top: 0; color: #d35400; }
+
+        /* Cart Items */
+        .cart-item { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .cart-item img { width: 100px; height: 100px; object-fit: contain; border-radius: 8px; }
+        .cart-details { flex: 1; }
+        .cart-details h4 { margin: 0 0 8px 0; color: #2d3436; font-size: 16px; }
+        .cart-meta { font-size: 13px; color: #636e72; margin-bottom: 10px; }
+        .cart-price { font-size: 18px; font-weight: 700; color: var(--primary); }
+
+        /* Actions */
+        .cart-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
+        .remove-btn { 
+            background: none; 
+            color: var(--primary); 
+            text-decoration: none; 
+            font-size: 13px; 
+            font-weight: 600; 
+            border: 1px solid var(--primary); 
+            padding: 5px 12px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            transition: 0.3s; 
+        }
+        .remove-btn:hover { background: var(--primary); color: white; }
+
+        /* Summary & Checkout */
+        .cart-summary { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-top: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: right;
+        }
+        .checkout-btn { 
+            background: var(--dark); 
+            color: white; 
+            padding: 12px 30px; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            display: inline-block; 
+            margin-top: 15px; 
+            font-weight: 700;
+        }
+        
+        /* Empty State */
+        .empty-cart { text-align: center; padding: 100px 0; background: white; border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="cart-container">
+    <div class="cart-header">
+        <div>
+            <a href="/" class="back-link">← Continue Shopping</a>
+            <h1>Your Shopping Cart & Comparison 🛒</h1>
+        </div>
+    </div>
+
+    {% if comparison %}
+    <div class="comparison-box">
+        <h3>📊 Smart Comparison Insight</h3>
+        <p style="font-size: 18px; color: #d35400;">{{ comparison }}</p>
+        <small>Note: Comparison is based on price, ratings, and delivery speed from your cart items.</small>
+    </div>
+    {% endif %}
+
+    {% if cart_items %}
+        {% for item in cart_items %}
+        <div class="cart-item">
+            <img src="{{ item.product_data.thumbnail }}" alt="product">
+            
+            <div class="cart-details">
+                <span style="font-size: 10px; text-transform: uppercase; color: var(--primary); font-weight: 800; letter-spacing: 1px;">
+                    {{ item.product_data.source }}
+                </span>
+                <h4>{{ item.product_data.title }}</h4>
+                <div class="cart-meta">
+                    Quantity: <b>{{ item.quantity }}</b> | 
+                    Added on: {{ item.added_at|date:"d M, Y" }}
+                </div>
+                <div class="cart-price">{{ item.product_data.price }}</div>
+                
+                <div style="margin-top: 10px;">
+                    <a href="{{ item.product_data.product_url }}" target="_blank" class="buy-now-btn" style="background: #27ae60; color: white; padding: 5px 15px; border-radius: 5px; text-decoration: none; font-size: 14px; font-weight: 600;">Buy Now 🚀</a>
+                </div>
+            </div>
+
+            <div class="cart-actions">
+                <form action="{% url 'remove_from_cart' item.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="remove-btn">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="cart-summary">
+            {% if total_savings > 0 %}
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border: 1px solid #27ae60; margin: 10px 0; text-align: left;">
+                <h4 style="color: #27ae60; margin: 0;">✅ Optimized Cart Recommendation</h4>
+                <p style="font-size: 14px; margin: 5px 0;">Buying from best platforms saves you: <strong>₹{{ total_savings }}</strong></p>
+            </div>
+            {% endif %}
+
+            <div style="font-size: 18px; color: #636e72;">Total Cart Value</div>
+            <div style="font-size: 32px; font-weight: 800; color: var(--dark);">₹{{ total_price }}</div>
+            <a href="#" class="checkout-btn">Proceed to Checkout</a>
+        </div>
+
+    {% else %}
+        <div class="empty-cart">
+            <img src="https://cdn-icons-png.flaticon.com/512/11329/11329060.png" style="width: 120px; opacity: 0.5;">
+            <h2 style="color: #ccc; margin-top: 20px;">Your cart is empty!</h2>
+            <p>Start adding products from search results to compare and buy them.</p>
+            <a href="/" class="checkout-btn" style="background: var(--primary);">Go to Search</a>
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html> {% endcomment %}
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Shopping Cart & Comparison - SmartShopping</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        /* Layout Styles */
+        .cart-container { padding: 40px 10%; min-height: 80vh; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: bold; }
+
+        /* Comparison Box */
+        .comparison-box { background: #fff8e1; border: 2px dashed #ffa502; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+        .comparison-box h3 { margin-top: 0; color: #d35400; }
+
+        /* Cart Items */
+        .cart-item { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .cart-item img { width: 100px; height: 100px; object-fit: contain; border-radius: 8px; }
+        .cart-details { flex: 1; }
+        .cart-details h4 { margin: 0 0 8px 0; color: #2d3436; font-size: 16px; }
+        .cart-meta { font-size: 13px; color: #636e72; margin-bottom: 10px; }
+        .cart-price { font-size: 18px; font-weight: 700; color: var(--primary); }
+
+        /* Actions */
+        .cart-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
+        .remove-btn { 
+            background: none; 
+            color: var(--primary); 
+            text-decoration: none; 
+            font-size: 13px; 
+            font-weight: 600; 
+            border: 1px solid var(--primary); 
+            padding: 5px 12px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            transition: 0.3s; 
+        }
+        .remove-btn:hover { background: var(--primary); color: white; }
+
+        /* Summary & Checkout */
+        .cart-summary { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-top: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: right;
+        }
+        .checkout-btn { 
+            background: var(--dark); 
+            color: white; 
+            padding: 12px 30px; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            display: inline-block; 
+            margin-top: 15px; 
+            font-weight: 700;
+        }
+        
+        /* Empty State */
+        .empty-cart { text-align: center; padding: 100px 0; background: white; border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="cart-container">
+    <div class="cart-header">
+        <div>
+            <a href="/" class="back-link">← Continue Shopping</a>
+            <h1>Your Shopping Cart & Comparison 🛒</h1>
+        </div>
+    </div>
+
+    {% if comparison %}
+    <div class="comparison-box">
+        <h3>📊 Smart Comparison Insight</h3>
+        <p style="font-size: 18px; color: #d35400;">{{ comparison }}</p>
+        <small>Note: Comparison is based on price, ratings, and delivery speed from your cart items.</small>
+    </div>
+    {% endif %}
+
+    {% if cart_items %}
+        {% for item in cart_items %}
+        <div class="cart-item">
+            <img src="{{ item.product_data.thumbnail }}" alt="product">
+            
+            <div class="cart-details">
+                <span style="font-size: 10px; text-transform: uppercase; color: var(--primary); font-weight: 800; letter-spacing: 1px;">
+                    {{ item.product_data.source }}
+                </span>
+                <h4>{{ item.product_data.title }}</h4>
+                <div class="cart-meta">
+                    Quantity: <b>{{ item.quantity }}</b> | 
+                    Added on: {{ item.added_at|date:"d M, Y" }}
+                </div>
+                <div class="cart-price">{{ item.product_data.price }}</div>
+                
+                <div style="margin-top: 10px;">
+                    {% if item.product_data.product_url %}
+                        <a href="{{ item.product_data.product_url }}" target="_blank" class="buy-now-btn" 
+                           style="background-color: #27ae60; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 14px;">
+                           Buy Now 🚀
+                        </a>
+                    {% elif item.product_data.link %}
+                        <a href="{{ item.product_data.link }}" target="_blank" class="buy-now-btn" 
+                           style="background-color: #27ae60; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 14px;">
+                           Buy Now 🚀
+                        </a>
+                    {% else %}
+                        <span style="color: #999; font-size: 12px;">Link not available</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cart-actions">
+                <form action="{% url 'remove_from_cart' item.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="remove-btn">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="cart-summary">
+            {% if total_savings > 0 %}
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border: 1px solid #27ae60; margin: 10px 0; text-align: left;">
+                <h4 style="color: #27ae60; margin: 0;">✅ Optimized Cart Recommendation</h4>
+                <p style="font-size: 14px; margin: 5px 0;">Buying from best platforms saves you: <strong>₹{{ total_savings }}</strong></p>
+            </div>
+            {% endif %}
+
+            <div style="font-size: 18px; color: #636e72;">Total Cart Value</div>
+            <div style="font-size: 32px; font-weight: 800; color: var(--dark);">₹{{ total_price }}</div>
+            <a href="#" class="checkout-btn">Proceed to Checkout</a>
+        </div>
+
+    {% else %}
+        <div class="empty-cart">
+            <img src="https://cdn-icons-png.flaticon.com/512/11329/11329060.png" style="width: 120px; opacity: 0.5;">
+            <h2 style="color: #ccc; margin-top: 20px;">Your cart is empty!</h2>
+            <p>Start adding products from search results to compare and buy them.</p>
+            <a href="/" class="checkout-btn" style="background: var(--primary);">Go to Search</a>
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html> {% endcomment %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Shopping Cart & Comparison - SmartShopping</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --blue: #1e90ff; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        /* Layout Styles */
+        .cart-container { padding: 40px 10%; min-height: 80vh; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: bold; }
+
+        /* Comparison Box */
+        .comparison-box { background: #fff8e1; border: 2px dashed #ffa502; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+        .comparison-box h3 { margin-top: 0; color: #d35400; }
+
+        /* Smart Optimization Card */
+        .smart-opt-card {
+            background: #eaffea;
+            border: 2px solid var(--success);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.1);
+        }
+        .smart-opt-card h3 { color: var(--success); margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .smart-list { list-style: none; padding: 0; margin: 15px 0; }
+        .smart-list li { 
+            padding: 8px 0; 
+            border-bottom: 1px solid rgba(39, 174, 96, 0.2);
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Cart Items */
+        .cart-item { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .cart-item img { width: 100px; height: 100px; object-fit: contain; border-radius: 8px; }
+        .cart-details { flex: 1; }
+        .cart-details h4 { margin: 0 0 8px 0; color: #2d3436; font-size: 16px; }
+        .cart-meta { font-size: 13px; color: #636e72; margin-bottom: 10px; }
+        .cart-price { font-size: 18px; font-weight: 700; color: var(--primary); }
+
+        /* Actions */
+        .cart-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
+        .remove-btn { 
+            background: none; 
+            color: var(--primary); 
+            text-decoration: none; 
+            font-size: 13px; 
+            font-weight: 600; 
+            border: 1px solid var(--primary); 
+            padding: 5px 12px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            transition: 0.3s; 
+        }
+        .remove-btn:hover { background: var(--primary); color: white; }
+
+        /* Summary & Checkout */
+        .cart-summary { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-top: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: right;
+        }
+        .checkout-btn { 
+            background: var(--dark); 
+            color: white; 
+            padding: 12px 30px; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            display: inline-block; 
+            margin-top: 15px; 
+            font-weight: 700;
+        }
+        
+        /* Empty State */
+        .empty-cart { text-align: center; padding: 100px 0; background: white; border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="cart-container">
+    <div class="cart-header">
+        <div>
+            <a href="/" class="back-link">← Continue Shopping</a>
+            <h1>Your Shopping Cart & Comparison 🛒</h1>
+        </div>
+    </div>
+
+    {% if comparison %}
+    <div class="comparison-box">
+        <h3>📊 Smart Comparison Insight</h3>
+        <p style="font-size: 18px; color: #d35400;">{{ comparison }}</p>
+        <small>Note: Comparison is based on price, ratings, and delivery speed from your cart items.</small>
+    </div>
+    {% endif %}
+
+    {% if cart_items %}
+        {% if smart_is_optimized %}
+        <div class="smart-opt-card">
+            <h3><i class="fas fa-magic"></i> Smart Saving Suggestion!</h3>
+            <p>We found a way to save you <strong>₹{{ smart_savings }}</strong> by grouping your items across the best platforms.</p>
+            
+            <ul class="smart-list">
+                {% for item in smart_optimized_items %}
+                <li>
+                    <span><i class="fas fa-check-circle" style="color: var(--success);"></i> {{ item.product_name|truncatechars:50 }}</span>
+                    <span>Best on <strong>{{ item.best_platform|upper }}</strong>: <b>₹{{ item.price }}</b></span>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <div style="font-size: 14px; color: #2d3436;">
+                <strong>Optimized Total: ₹{{ smart_optimized_total }}</strong>
+            </div>
+        </div>
+        {% endif %}
+
+        {% for item in cart_items %}
+        <div class="cart-item">
+            <img src="{{ item.product_data.thumbnail }}" alt="product">
+            
+            <div class="cart-details">
+                <span style="font-size: 10px; text-transform: uppercase; color: var(--primary); font-weight: 800; letter-spacing: 1px;">
+                    {{ item.product_data.source }}
+                </span>
+                <h4>{{ item.product_data.title }}</h4>
+                <div class="cart-meta">
+                    Quantity: <b>{{ item.quantity }}</b> | 
+                    Added on: {{ item.added_at|date:"d M, Y" }}
+                </div>
+                <div class="cart-price">{{ item.product_data.price }}</div>
+                
+                <div style="margin-top: 10px;">
+                    {% if item.product_data.product_url %}
+                        <a href="{{ item.product_data.product_url }}" target="_blank" class="buy-now-btn" 
+                           style="background-color: #27ae60; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 14px;">
+                           Buy Now 🚀
+                        </a>
+                    {% elif item.product_data.link %}
+                        <a href="{{ item.product_data.link }}" target="_blank" class="buy-now-btn" 
+                           style="background-color: #27ae60; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 14px;">
+                           Buy Now 🚀
+                        </a>
+                    {% else %}
+                        <span style="color: #999; font-size: 12px;">Link not available</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cart-actions">
+                <form action="{% url 'remove_from_cart' item.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="remove-btn">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="cart-summary">
+            {% if total_savings_manual > 0 %}
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border: 1px solid #27ae60; margin: 10px 0; text-align: left;">
+                <h4 style="color: #27ae60; margin: 0;">✅ Standard Optimization</h4>
+                <p style="font-size: 14px; margin: 5px 0;">Individual savings found: <strong>₹{{ total_savings_manual }}</strong></p>
+            </div>
+            {% endif %}
+
+            <div style="font-size: 18px; color: #636e72;">Total Cart Value</div>
+            <div style="font-size: 32px; font-weight: 800; color: var(--dark);">₹{{ total_price }}</div>
+            <a href="#" class="checkout-btn">Proceed to Checkout</a>
+        </div>
+
+    {% else %}
+        <div class="empty-cart">
+            <img src="https://cdn-icons-png.flaticon.com/512/11329/11329060.png" style="width: 120px; opacity: 0.5;">
+            <h2 style="color: #ccc; margin-top: 20px;">Your cart is empty!</h2>
+            <p>Start adding products from search results to compare and buy them.</p>
+            <a href="/" class="checkout-btn" style="background: var(--primary);">Go to Search</a>
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

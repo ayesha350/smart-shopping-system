@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login / Signup - SmartShopping</title>
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f2f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .auth-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: var(--dark); margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .btn-auth { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .toggle-link { text-align: center; margin-top: 20px; font-size: 14px; color: #777; }
+        .toggle-link a { color: var(--primary); text-decoration: none; font-weight: bold; }
+        .error-msg { background: #ffeaa7; color: #d63031; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 13px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="auth-card">
+    <h2>{% if request.path == '/signup/' %}Create Account{% else %}Login{% endif %}</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="error-msg">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Username / Email</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" required>
+        </div>
+        
+        <button type="submit" class="btn-auth">
+            {% if request.path == '/signup/' %}Sign Up{% else %}Login{% endif %}
+        </button>
+    </form>
+
+    <div class="toggle-link">
+        {% if request.path == '/signup/' %}
+            Already have an account? <a href="{% url 'login' %}">Login</a>
+        {% else %}
+            New here? <a href="{% url 'signup' %}">Create Account</a>
+        {% endif %}
+    </div>
+    
+    <div style="text-align: center; margin-top: 15px;">
+        <a href="/" style="text-decoration: none; color: #999; font-size: 12px;">← Back to Home</a>
+    </div>
+</div>
+
+</body>
+</html>

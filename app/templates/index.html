@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Shopping - Home</title>
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --light: #f1f2f6; --success: #2ed573; --warning: #ffa502; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 0; }
+        
+        /* Navigation */
+        .navbar { background: white; padding: 15px 10%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .nav-links { display: flex; gap: 20px; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--dark); font-weight: 600; font-size: 14px; }
+        .btn-nav-primary { background: var(--primary); color: white !important; padding: 8px 18px; border-radius: 20px; text-decoration: none; }
+        
+        /* Hero Section */
+        .hero { background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1350&q=80'); height: 350px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: white; flex-direction: column; text-align: center; }
+        .hero h1 { font-size: 42px; font-weight: 800; margin-bottom: 20px; letter-spacing: -1px; }
+        
+        /* Categories */
+        .category-wrapper { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; padding: 30px 10%; }
+        .category-item { background: white; padding: 18px; text-align: center; border-radius: 12px; text-decoration: none; color: var(--dark); box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.3s; font-weight: 600; font-size: 14px; }
+        .category-item:hover { background: var(--primary); color: white; transform: translateY(-3px); }
+
+        /* Deals Section */
+        .deals-container { padding: 0 10% 60px 10%; }
+        .deals-scroll { display: flex; overflow-x: auto; gap: 25px; padding: 20px 5px; scrollbar-width: none; }
+        .deals-scroll::-webkit-scrollbar { display: none; }
+        
+        /* Strict Product Card UI */
+        .product-card { min-width: 280px; max-width: 280px; background: white; border-radius: 15px; padding: 18px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        
+        .tag-container { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 5px; z-index: 10; }
+        .tag { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 800; color: white; text-transform: uppercase; }
+        .tag-best { background: var(--success); }
+        .tag-fast { background: var(--blue); }
+
+        .prod-img { width: 100%; height: 180px; object-fit: contain; margin-bottom: 15px; }
+        .platform-name { font-size: 11px; color: var(--primary); margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .prod-name { font-size: 14px; margin: 8px 0; height: 40px; overflow: hidden; color: var(--dark); font-weight: 600; line-height: 1.4; }
+        .rating-box { font-size: 12px; color: var(--warning); margin-bottom: 10px; font-weight: bold; }
+        
+        .price-container { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .price-inr { font-size: 20px; font-weight: 800; color: var(--dark); }
+        .discount-pct { color: var(--success); font-size: 13px; font-weight: 700; background: #e8fcf0; padding: 2px 6px; border-radius: 4px; }
+        
+        .delivery-time { font-size: 11px; color: #666; margin-bottom: 15px; font-weight: 500; }
+        
+        .btn-action { width: 100%; padding: 10px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; margin-bottom: 8px; font-size: 12px; text-decoration: none; text-align: center; display: block; box-sizing: border-box; transition: 0.2s; }
+        .btn-buy { background: var(--dark); color: white; }
+        .btn-wish { background: white; border: 1.5px solid #eee; color: var(--dark); }
+        .btn-wish:hover { color: var(--primary); border-color: var(--primary); }
+
+        /* Alert Section */
+        .alert-box { display: flex; gap: 5px; border-top: 1px dashed #eee; padding-top: 10px; }
+        .alert-input { flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; outline: none; }
+        .btn-alert { background: var(--warning); color: white; border: none; border-radius: 6px; padding: 0 10px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" style="font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; letter-spacing: -1px;">SmartShopping</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'view_wishlist' %}">❤️ Wishlist</a>
+                <a href="{% url 'price_alerts' %}">🔔 Alerts</a>
+                <a href="{% url 'cart' %}" class="btn-nav-primary">🛒 Cart</a>
+                <a href="{% url 'logout' %}" style="color: #ff4757;">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'signup' %}" class="btn-nav-primary">Sign Up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    {% include 'location_modal.html' %}
+
+    <div class="hero">
+        <h1>Save Money. Shop Smart.</h1>
+        <div style="width: 100%; max-width: 600px;">
+            {% include 'search_bar.html' %}
+        </div>
+    </div>
+
+    <div class="category-wrapper">
+        {% for cat in categories %}
+            <a href="{% url 'search' %}?q={{ cat }}" class="category-item">{{ cat }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="deals-container">
+        <h2 style="font-weight: 800; font-size: 24px; color: var(--dark);">🔥 Today's Best Deals (INR)</h2>
+        <div class="deals-scroll">
+            {% for item in best_deals %}
+            <div class="product-card">
+                <div class="tag-container">
+                    <span class="tag tag-best">Best Deal</span>
+                    {% if item.fast_delivery %}<span class="tag tag-fast">Fastest Delivery</span>{% endif %}
+                </div>
+
+                <img src="{{ item.thumbnail }}" class="prod-img" alt="{{ item.title }}">
+
+                <p class="platform-name">{{ item.source }}</p>
+                <div class="rating-box">⭐ {{ item.rating|default:"4.5" }}</div>
+
+                <h3 class="prod-name">{{ item.title|truncatechars:50 }}</h3>
+
+                <div class="price-container">
+                    <span class="price-inr">{{ item.price }}</span>
+                    {% if item.discount %}
+                    <span class="discount-pct">{{ item.discount }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="delivery-time">🚚 Delivery: <b>{{ item.delivery }}</b></div>
+
+                <a href="{{ item.link }}" target="_blank" class="btn-action btn-buy">Buy Now</a>
+                
+                <form action="{% url 'add_to_wishlist' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_data" value='{{ item.json_data }}'>
+                    <button type="submit" class="btn-action btn-wish">Save ❤️</button>
+                </form>
+
+                <form action="{% url 'set_price_alert' %}" method="POST" class="alert-box">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_name" value="{{ item.title }}">
+                    <input type="number" name="target_price" class="alert-input" placeholder="Price ₹" required>
+                    <button type="submit" class="btn-alert">🔔</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>

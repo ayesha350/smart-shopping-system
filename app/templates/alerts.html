@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Price Alerts - SmartShopping</title>
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .alert-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .status-active { color: #2ed573; font-weight: bold; font-size: 12px; border: 1px solid #2ed573; padding: 2px 8px; border-radius: 20px; }
+        .back-link { text-decoration: none; color: var(--primary); font-weight: bold; display: block; margin-bottom: 20px; }
+        .btn-delete { background: #ff4757; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/" class="back-link">← Back to Shopping</a>
+    <h1>My Price Alerts 🔔</h1>
+    <p style="color: #666;">We will notify you when these products hit your target price.</p>
+
+    {% for alert in alerts %}
+    <div class="alert-card">
+        <div>
+            <h3 style="margin: 0; font-size: 16px;">{{ alert.product_name|truncatechars:50 }}</h3>
+            <p style="margin: 5px 0; font-size: 14px; color: #555;">Target Price: <strong>₹{{ alert.target_price }}</strong></p>
+            <span class="status-active">Monitoring</span>
+        </div>
+        <form action="{% url 'delete_alert' alert.id %}" method="POST">
+            {% csrf_token %}
+            <button type="submit" class="btn-delete">Cancel Alert</button>
+        </form>
+    </div>
+    {% empty %}
+    <div style="text-align: center; padding: 50px; background: white; border-radius: 12px;">
+        <p>No price alerts set yet.</p>
+    </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>

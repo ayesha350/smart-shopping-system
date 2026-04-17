@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Wishlist - SmartShopping</title>
+    <style>
+        :root { --primary: #ff4757; --dark: #2f3542; --bg: #f1f2f6; --success: #2ed573; --warning: #ffa502; --blue: #1e90ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        /* Navigation */
+        .navbar { background: white; padding: 15px 10%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .nav-links { display: flex; gap: 15px; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--dark); font-weight: 600; font-size: 14px; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 30px 10%; }
+        h1 { color: var(--dark); font-weight: 800; margin-bottom: 30px; }
+
+        /* Wishlist Grid */
+        .wish-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; }
+        
+        /* Strict Product Card UI */
+        .product-card { background: white; border-radius: 15px; padding: 18px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        
+        /* Tags */
+        .tag-container { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 5px; z-index: 10; }
+        .tag { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 800; color: white; text-transform: uppercase; }
+        .tag-best { background: var(--success); }
+        .tag-fast { background: var(--blue); }
+
+        .prod-img { width: 100%; height: 200px; object-fit: contain; margin-bottom: 15px; }
+        .platform-name { font-size: 11px; color: var(--primary); margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .prod-name { font-size: 15px; margin: 8px 0; height: 42px; overflow: hidden; color: var(--dark); line-height: 1.4; font-weight: 600; }
+        .rating-box { font-size: 13px; color: var(--warning); margin-bottom: 10px; font-weight: bold; }
+        
+        .price-container { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .price-inr { font-size: 22px; font-weight: 800; color: var(--dark); }
+        .discount-pct { color: var(--success); font-size: 14px; font-weight: 700; background: #e8fcf0; padding: 2px 6px; border-radius: 4px; }
+        
+        .delivery-time { font-size: 12px; color: #666; margin-bottom: 18px; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+        
+        /* Buttons */
+        .btn-group { display: flex; flex-direction: column; gap: 8px; }
+        .btn-action { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; text-decoration: none; text-align: center; transition: 0.2s; display: block; box-sizing: border-box; }
+        .btn-buy { background: var(--dark); color: white; }
+        .btn-remove { background: #fff; border: 1.5px solid #eee; color: #999; }
+        .btn-remove:hover { background: #fff5f5; border-color: var(--primary); color: var(--primary); }
+        
+        /* Price Alert Section */
+        .alert-box { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; display: flex; gap: 5px; }
+        .alert-input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; outline: none; }
+        .btn-alert { background: var(--warning); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" style="font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; letter-spacing: -1px;">SmartShopping</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="{% url 'price_alerts' %}">🔔 Alerts</a>
+            <a href="{% url 'cart' %}">🛒 Cart</a>
+            <a href="{% url 'logout' %}" style="color: var(--primary);">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>My Wishlist ❤️</h1>
+        <div class="wish-grid">
+            {% for item in wishlist_items %}
+            <div class="product-card">
+                <div class="tag-container">
+                    {% if item.product_data.best_deal %}<span class="tag tag-best">Best Deal</span>{% endif %}
+                    {% if item.product_data.fast_delivery %}<span class="tag tag-fast">Fastest Delivery</span>{% endif %}
+                </div>
+
+                <img src="{{ item.product_data.thumbnail }}" class="prod-img" alt="{{ item.product_data.title }}">
+
+                <p class="platform-name">{{ item.product_data.source }}</p>
+                <div class="rating-box">⭐ {{ item.product_data.rating|default:"4.0" }}</div>
+
+                <h3 class="prod-name">{{ item.product_data.title|truncatechars:65 }}</h3>
+
+                <div class="price-container">
+                    <span class="price-inr">{{ item.product_data.price }}</span>
+                    {% if item.product_data.discount %}
+                    <span class="discount-pct">{{ item.product_data.discount }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="delivery-time">🚚 Delivery: <b>{{ item.product_data.delivery }}</b></div>
+
+                <div class="btn-group">
+                    {% if item.product_data.link and item.product_data.link != "None" %}
+                        <a href="{{ item.product_data.link }}" target="_blank" rel="noopener noreferrer" class="btn-action btn-buy">Buy Now</a>
+                    {% else %}
+                        <a href="https://www.google.com/search?q={{ item.product_data.title }}" target="_blank" class="btn-action btn-buy" style="background: #636e72;">Find on Google</a>
+                    {% endif %}
+                    
+                    <form action="{% url 'remove_from_wishlist' item.id %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action btn-remove">🗑️ Remove from List</button>
+                    </form>
+                </div>
+
+                <form action="{% url 'set_price_alert' %}" method="POST" class="alert-box">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_name" value="{{ item.product_data.title }}">
+                    <input type="number" name="target_price" class="alert-input" placeholder="Alert at ₹..." required>
+                    <button type="submit" class="btn-alert">🔔</button>
+                </form>
+            </div>
+            {% empty %}
+            <div style="grid-column: span 3; text-align: center; padding: 100px 0;">
+                <h2 style="color: #ccc;">Your wishlist is empty.</h2>
+                <a href="/" style="color: var(--primary); font-weight: bold; text-decoration: none;">Browse Products →</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>
