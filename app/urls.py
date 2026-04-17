@@ -23,5 +23,8 @@ urlpatterns = [
     path('wishlist/', views.view_wishlist, name='view_wishlist'),
     path('add-to-wishlist/', views.add_to_wishlist, name='add_to_wishlist'),
     path('remove-wishlist/<int:item_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+
+    # Check karein ki kya ye line exact aisi hi hai:
+    path('api/set-location/', views.set_location, name='set_location'),
 ]
 
