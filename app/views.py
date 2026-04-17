@@ -266,37 +266,36 @@ def view_cart(request):
 
     total_savings_manual = total_price - optimized_total_manual
 
-    # --- 🚀 NEW INTEGRATION: Advanced Multi-App Optimization (from utils.py) ---
-    # Humne purana logic rakha hai aur naya bhi integrate kar diya hai context ke liye
+    # --- 🚀 NEW INTEGRATION: Advanced Multi-App Optimization ---
+    # Purane logic ko bina disturb kiye naye logic call yahan hain
     optimization_data = optimize_cart(cart_items)
+    smart_logic = get_optimized_cart_v2(cart_items) 
 
-    smart_logic = get_optimized_cart_v2(cart_items) # NEW: Bina purane ko chhuye
     # --- 5. RENDER CONTEXT (Combining All Features & New Integration) ---
     context = {
-        'cart_items': cart_items,           
-        'cart': session_cart,               
+        'cart_items': cart_items,
+        'cart': session_cart,
         'total_price': f"{total_price:,.2f}",
         'comparison': comparison,
         
-        # Original Manual Optimization Fields (kept as is)
         'optimized_recommendations': recommendations_manual,
         'optimized_total_manual': f"{optimized_total_manual:,.2f}",
         'total_savings_manual': int(total_savings_manual),
 
-        # Existing Optimization Data
         'optimized_items': optimization_data['optimized_items'],
         'optimized_total': optimization_data['optimized_total'],
-        'total_savings': optimization_data.get('savings', 0), 
-        'is_optimized': optimization_data.get('optimized', False),
-        'opt_label': optimization_data.get('label', 'Standard'),
+        'total_savings': optimization_data['savings'],
+        'is_optimized': optimization_data['optimized'],
+        'opt_label': optimization_data['label'],
 
-        # 👉 ADD THIS NEW SECTION BELOW:
+        # Smart Logic Data (Safe Integration)
         'smart_optimized_items': smart_logic['optimized_items'],
         'smart_optimized_total': smart_logic['optimized_total'],
         'smart_savings': smart_logic['savings'],
-        'smart_is_optimized': smart_logic['optimized']
+        'smart_is_optimized': smart_logic['optimized'],
     }
     
+    return render(request, 'cart.html', context)
 
 
 
@@ -550,5 +549,4 @@ def get_optimized_cart_v2(cart_items):
         "optimized_total": f"{optimized_total_val:,.2f}",
         "savings": int(savings)
     }
-   
 
