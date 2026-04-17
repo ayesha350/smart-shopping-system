@@ -297,28 +297,7 @@ def view_cart(request):
         'smart_is_optimized': smart_logic['optimized']
     }
     
-    return render(request, 'cart.html', context)
-    # --- 5. RENDER CONTEXT (Combining All Features & New Integration) ---
-    context = {
-        'cart_items': cart_items,           # For Database view
-        'cart': session_cart,               # For Session view
-        'total_price': f"{total_price:,.2f}",
-        'comparison': comparison,
-        
-        # Original Manual Optimization Fields (kept as is)
-        'optimized_recommendations': recommendations_manual,
-        'optimized_total_manual': f"{optimized_total_manual:,.2f}",
-        'total_savings_manual': int(total_savings_manual),
 
-        # New Advanced Optimization Fields (integrated from utils.py)
-        'optimized_items': optimization_data['optimized_items'],
-        'optimized_total': optimization_data['optimized_total'],
-        'total_savings': optimization_data['savings'],
-        'is_optimized': optimization_data['optimized'],
-        'opt_label': optimization_data['label']
-    }
-    
-    return render(request, 'cart.html', context)
 
 
 
@@ -527,6 +506,49 @@ def set_location(request):
         request.session['location'] = loc
         return redirect('home')
     
+def get_optimized_cart_v2(cart_items):
+    import re
+    grouped_data = {}
+    original_total = 0
 
+    if not cart_items:
+        return {"optimized": False, "optimized_items": [], "optimized_total": "0.00", "savings": 0}
+
+    for item in cart_items:
+        data = item.product_data
+        p_str = str(data.get('price', '0'))
+        price = float(re.sub(r'[^\d.]', '', p_str)) if any(c.isdigit() for c in p_str) else 0.0
+        
+        # KEYWORD MATCHING: Pehle 7-8 letters se match karein (e.g., "Peanut")
+        full_name = data.get('title', 'Unknown Product').strip()
+        match_key = full_name.lower()[:8] 
+        
+        source = data.get('source', 'Unknown')
+        qty = item.quantity
+        original_total += (price * qty)
+
+        if match_key not in grouped_data:
+            grouped_data[match_key] = {
+                'display_name': full_name,
+                'best_platform': source,
+                'price': price,
+                'qty': qty
+            }
+        else:
+            # Agar wahi product dusri jagah sasta hai, toh update karein
+            if price < grouped_data[match_key]['price']:
+                grouped_data[match_key]['price'] = price
+                grouped_data[match_key]['best_platform'] = source
+
+    optimized_items = list(grouped_data.values())
+    optimized_total_val = sum(i['price'] * i['qty'] for i in optimized_items)
+    savings = original_total - optimized_total_val
+
+    return {
+        "optimized": savings > 0.5, # Thoda bhi bacha toh dikhao
+        "optimized_items": optimized_items,
+        "optimized_total": f"{optimized_total_val:,.2f}",
+        "savings": int(savings)
+    }
    
 
