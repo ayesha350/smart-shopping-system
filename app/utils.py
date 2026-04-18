@@ -193,7 +193,148 @@ def get_optimized_cart_v2(cart_items):
         "savings": int(savings)
     }
 
-import re
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def get_alternative_products(original_product, all_products):
     alternatives = []
@@ -239,18 +380,29 @@ def get_alternative_products(original_product, all_products):
 
     return sorted(alternatives, key=lambda x: x['price'])[:3]
 
-def get_alternative_products(original_product, all_products):
-    # Testing ke liye: Bas koi bhi 2 dusre products utha lo
-    alts = [p for p in all_products if p.get('product_id') != original_product.get('product_id')]
+
+
+
+
+
+
+
+
+
+
+
+# def get_alternative_products(original_product, all_products):
+#     # Testing ke liye: Bas koi bhi 2 dusre products utha lo
+#     alts = [p for p in all_products if p.get('product_id') != original_product.get('product_id')]
     
-    # Inhe "Better Option" ka tag de do
-    results = []
-    for a in alts[:2]:
-        results.append({
-            "tag": "Loot Deal",
-            "product_name": a.get('title'),
-            "price": a.get('price'),
-            "platform": a.get('source'),
-            "reason": "Sasta mil raha h!"
-        })
-    return results
+#     # Inhe "Better Option" ka tag de do
+#     results = []
+#     for a in alts[:2]:
+#         results.append({
+#             "tag": "Loot Deal",
+#             "product_name": a.get('title'),
+#             "price": a.get('price'),
+#             "platform": a.get('source'),
+#             "reason": "Sasta mil raha h!"
+#         })
+#     return results

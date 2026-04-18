@@ -70,8 +70,13 @@
             {% else %}
                 <a href="{% url 'login' %}">Login</a>
             {% endif %}
+
+
+            
         </div>
     </nav>
+
+
 
     <div class="filter-bar">
         <span style="font-weight: 700; color: #888;">SORT BY:</span>
@@ -85,7 +90,7 @@
     <div class="product-card {% if item.recommended %}recommended-border{% endif %}">
         
         {% if item.recommended %}
-            <div class="recommended-badge">AI RECOMMENDED</div>
+            <div class="recommended-badge">RECOMMENDED </div>
         {% endif %}
 
         <div class="tag-container">
@@ -96,13 +101,19 @@
         <p class="platform-name">{{ item.source }}</p>
         <div class="rating-box">⭐ {{ item.rating|default:"4.0" }}</div>
         <h3 class="prod-name">{{ item.title|truncatechars:65 }}</h3>
-
         <div class="price-container">
-            <span class="price-inr">{{ item.price }}</span>
-            {% if item.discount and item.discount != "0% OFF" %}
-                <span class="discount-pct">{{ item.discount }}</span>
-            {% endif %}
-        </div>
+    {% if item.price and item.price != "0" and item.price != "₹0" %}
+        <span class="price-inr">{{ item.price }}</span>
+        
+        {# Discount tabhi dikhega jab price valid ho aur discount 99% na ho #}
+        {% if item.discount and "99" not in item.discount and item.discount != "0% OFF" %}
+            <span class="discount-pct">{{ item.discount }}</span>
+        {% endif %}
+    {% else %}
+        <span style="color: #ff4757; font-size: 13px; font-weight: bold;">Check Website for Price</span>
+    {% endif %}
+</div>
+
         <div class="delivery-time">🚚 {{ item.delivery }}</div>
 
         <div style="margin-top: 10px; margin-bottom: 10px;">

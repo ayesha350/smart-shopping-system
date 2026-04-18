@@ -3,82 +3,100 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from .utils import fetch_products
-from .models import PriceAlert
 import json
-from .utils import optimize_cart
+from .utils import get_alternative_products
 from .models import PriceAlert, Wishlist
-from .models import CartItem
 import re
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .models import CartItem
-import re
-import re
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from .models import CartItem
-# Purane imports ke saath naya function add karein
-from .utils import fetch_products, optimize_cart, get_optimized_cart_v2
-
-# HOME 
-def home(request):
-    categories = ['Food', 'Medicine', 'Clothes', 'Beauty', 'Shoes', 'Jwellery', 'Grocery', 'Electronics', 'General Products']
-    location = request.session.get('location', 'India')
-    
-    # Fetching real products with INR focus
-    all_deals = fetch_products("top deals", location=location)
-    
-    for item in all_deals:
-        # Serializing the clean data for Wishlist/Cart
-        item['json_data'] = json.dumps(item)
-        
-    # Showing high-rated authentic deals
-    best_deals = [item for item in all_deals if item.get('rating', 0) >= 4.2][:6]
-    
-    return render(request, 'index.html', {
-        'categories': categories, 
-        'best_deals': best_deals,
-        'location': location,
-        'recent': request.session.get('recent_searches', [])
-    })
-
-
-def home(request):
-    categories = ['Food', 'Medicine', 'Clothes', 'Beauty', 'Shoes', 'Jwellery', 'Grocery', 'Electronics', 'General Products']
-    location = request.session.get('location', 'India')
-    
-    # Fetching real products with INR focus
-    all_deals = fetch_products("top deals", location=location)
-    
-    # --- 🚀 NEW: ALTERNATIVES LOGIC START ---
-    # Har deal ke liye uske saste aur behtar options dhoondhein
-    if all_deals:
-        for item in all_deals:
-            # Hum 'all_deals' ko hi as a database use kar rahe hain comparison ke liye
-            item['alternatives'] = get_alternative_products(item, all_deals)
-    # --- NEW: ALTERNATIVES LOGIC END ---
-
-    for item in all_deals:
-        # Serializing the clean data for Wishlist/Cart
-        # Isme ab 'alternatives' bhi include ho chuka hai
-        item['json_data'] = json.dumps(item)
-        
-    # Showing high-rated authentic deals
-    best_deals = [item for item in all_deals if item.get('rating', 0) >= 4.2][:6]
-    
-    return render(request, 'index.html', {
-        'categories': categories, 
-        'best_deals': best_deals,
-        'location': location,
-        'recent': request.session.get('recent_searches', [])
-    })
-
-
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import json
+from django.shortcuts import render, redirect
+from .models import CartItem
+from django.contrib.auth.decorators import login_required
+from .utils import fetch_products, optimize_cart, get_optimized_cart_v2
+
+# HOME PAGE
+def home(request):
+    # 1. Basic Setup
+    categories = ['Food', 'Medicine', 'Clothes', 'Beauty', 'Shoes', 'Jwellery', 'Grocery', 'Electronics', 'General Products']
+    location = request.session.get('location', 'India')
+    
+    # 2. Fetching real products with INR focus
+    all_deals_raw = fetch_products("top deals", location=location)
+    
+    # --- 🚀 NEW: CLEANING & ALTERNATIVES LOGIC START ---
+    #  only those products price is valid  (0 ya empty nahi)
+    all_deals = [p for p in all_deals_raw if p.get('price') not in ["0", 0, "₹0", "0.0", "", None]]
+    
+    if all_deals:
+        for item in all_deals:
+            # Har deal ke liye uske saste aur behtar options dhoondhein
+            # Hum 'all_deals' ko hi as a database use kar rahe hain comparison ke liye
+            item['alternatives'] = get_alternative_products(item, all_deals)
+            
+            # Serializing the clean data for Wishlist/Cart
+            # Isme ab 'alternatives' bhi include ho chuka hai
+            item['json_data'] = json.dumps(item)
+    # --- CLEANING & ALTERNATIVES LOGIC END ---
+        
+    # 3. Showing high-rated authentic deals (Filtering from cleaned list)
+    # Rating 4.2 se upar aur sirf top 6 deals
+    best_deals = [item for item in all_deals if float(item.get('rating', 0)) >= 4.2][:6]
+    
+    # 4. Context Preparation
+    context = {
+        'categories': categories, 
+        'best_deals': best_deals,
+        'location': location,
+        'recent': request.session.get('recent_searches', [])
+    }
+    
+    return render(request, 'index.html', context)
+
+def get_optimized_cart_v2(cart_items):
+    import re
+    grouped_data = {}
+    original_total = 0
+
+    if not cart_items:
+        return {"optimized": False, "optimized_items": [], "optimized_total": "0.00", "savings": 0}
+
+    for item in cart_items:
+        data = item.product_data
+        p_str = str(data.get('price', '0'))
+        price = float(re.sub(r'[^\d.]', '', p_str)) if any(c.isdigit() for c in p_str) else 0.0
+        
+        # KEYWORD MATCHING: Pehle 7-8 letters se match karein (e.g., "Peanut")
+        full_name = data.get('title', 'Unknown Product').strip()
+        match_key = full_name.lower()[:8] 
+        
+        source = data.get('source', 'Unknown')
+        qty = item.quantity
+        original_total += (price * qty)
+
+        if match_key not in grouped_data:
+            grouped_data[match_key] = {
+                'display_name': full_name,
+                'best_platform': source,
+                'price': price,
+                'qty': qty
+            }
+        else:
+            # Agar wahi product dusri jagah sasta hai, toh update karein
+            if price < grouped_data[match_key]['price']:
+                grouped_data[match_key]['price'] = price
+                grouped_data[match_key]['best_platform'] = source
+
+    optimized_items = list(grouped_data.values())
+    optimized_total_val = sum(i['price'] * i['qty'] for i in optimized_items)
+    savings = original_total - optimized_total_val
+
+    return {
+        "optimized": savings > 0.5, # Thoda bhi bacha toh dikhao
+        "optimized_items": optimized_items,
+        "optimized_total": f"{optimized_total_val:,.2f}",
+        "savings": int(savings)
+    }
+
 
 @csrf_exempt
 def set_location(request):
@@ -115,18 +133,6 @@ def set_location(request):
     return JsonResponse({"status": "error", "message": "Only POST allowed"}, status=405)
 
 
-
-def add_to_cart(request):
-    if request.method == "POST":
-        product_json = request.POST.get('product_data')
-        product_data = json.loads(product_json)
-        
-        cart = request.session.get('cart', [])
-        cart.append(product_data)
-        request.session['cart'] = cart
-        messages.success(request, "Product added to comparison cart!")
-    return redirect('cart')
-
 @login_required(login_url='login')
 def remove_from_cart(request, item_id):
     if request.method == "POST":
@@ -136,100 +142,6 @@ def remove_from_cart(request, item_id):
     return redirect('cart')
 
      
-
-
-  
-
-@login_required(login_url='login')
-def view_cart(request):
-    # --- 1. EXISTING LOGIC: Database & Session Fetching ---
-    cart_items = CartItem.objects.filter(user=request.user).order_by('-added_at')
-    session_cart = request.session.get('cart', [])
-    
-    comparison = ""
-    total_price = 0
-
-    def clean_price(price_str):
-        try:
-            return float(re.sub(r'[^\d.]', '', str(price_str)))
-        except: return 0.0
-
-    # --- 2. EXISTING LOGIC: Total Price Calculation ---
-    if cart_items.exists():
-        for item in cart_items:
-            price = clean_price(item.product_data.get('price', 0))
-            total_price += (price * item.quantity)
-
-        # --- 3. EXISTING LOGIC: Comparison Logic (Database Items) ---
-        if cart_items.count() >= 2:
-            item_list = []
-            for item in cart_items:
-                p_val = clean_price(item.product_data.get('price', 0))
-                item_list.append({
-                    'title': item.product_data.get('title', 'Product'),
-                    'price': p_val,
-                    'source': item.product_data.get('source', 'Unknown')
-                })
-            
-            sorted_items = sorted(item_list, key=lambda x: x['price'])
-            cheapest, next_best = sorted_items[0], sorted_items[1]
-            diff = next_best['price'] - cheapest['price']
-            
-            if diff > 0:
-                comparison = f"Decision Made: '{cheapest['title'][:30]}...' is the winner! It's ₹{int(diff)} cheaper. We recommend {cheapest['source']}."
-            else:
-                comparison = "Multiple products have the same lowest price."
-
-    # --- 4. EXISTING FEATURE: Multi-App Cart Optimization (Manual Logic) ---
-    optimized_total_manual = 0
-    recommendations_manual = []
-    
-    for item in cart_items:
-        price = clean_price(item.product_data.get('price', 0))
-        best_price = price 
-        optimized_total_manual += best_price
-        recommendations_manual.append({
-            'title': item.product_data.get('title'),
-            'platform': item.product_data.get('source'),
-            'price': best_price
-        })
-
-    total_savings_manual = total_price - optimized_total_manual
-
-    # --- 🚀 NEW INTEGRATION: Advanced Multi-App Optimization ---
-    # Purane logic ko bina disturb kiye naye logic call yahan hain
-    optimization_data = optimize_cart(cart_items)
-    smart_logic = get_optimized_cart_v2(cart_items) 
-
-    # --- 5. RENDER CONTEXT (Combining All Features & New Integration) ---
-    context = {
-        'cart_items': cart_items,
-        'cart': session_cart,
-        'total_price': f"{total_price:,.2f}",
-        'comparison': comparison,
-        
-        'optimized_recommendations': recommendations_manual,
-        'optimized_total_manual': f"{optimized_total_manual:,.2f}",
-        'total_savings_manual': int(total_savings_manual),
-
-        'optimized_items': optimization_data['optimized_items'],
-        'optimized_total': optimization_data['optimized_total'],
-        'total_savings': optimization_data['savings'],
-        'is_optimized': optimization_data['optimized'],
-        'opt_label': optimization_data['label'],
-
-        # Smart Logic Data (Safe Integration)
-        'smart_optimized_items': smart_logic['optimized_items'],
-        'smart_optimized_total': smart_logic['optimized_total'],
-        'smart_savings': smart_logic['savings'],
-        'smart_is_optimized': smart_logic['optimized'],
-    }
-    
-    return render(request, 'cart.html', context)
-
-
-
-
 # --- Keep existing cart_compare for safety if called directly ---
 def cart_compare(request):
     cart = request.session.get('cart', [])
@@ -264,6 +176,8 @@ def login_user(request):
 
 def logout_user(request):
     logout(request); return redirect('home')
+
+
 # --- WISHLIST LOGIC ---
 @login_required(login_url='login')
 def view_wishlist(request):
@@ -327,54 +241,6 @@ def delete_alert(request, alert_id):
 
 
 
-
-from .utils import get_alternative_products
-
-
-def search_results(request):
-    # SEARCH logic: query, sort aur location parameters le rahe hain
-    query = request.GET.get('q', '')
-    sort_option = request.GET.get('sort', 'relevance') # Default relevance
-    location = request.session.get('location', 'India')
-    
-    # Passing sort_by directly to your updated utility function
-    products = fetch_products(query, location=location, sort_by=sort_option)
-    
-    # Logic for Recommendation
-    if products:
-        # Relevance ke basis par sort karke pehle wale ko recommend mark karo
-        if sort_option == 'relevance':
-            products.sort(key=lambda x: (float(x.get('rating', 0)) * 10) - (float(x.get('extracted_price', 0)) / 1000), reverse=True)
-        products[0]['recommended'] = True
-
-    # --- 🚀 NEW: ALTERNATIVE PRODUCTS LOGIC START ---
-    # Har product ke liye baaki results mein se alternatives dhoondhein
-    for item in products:
-        # Hum 'products' (poori list) ko as a database bhej rahe hain
-        item['alternatives'] = get_alternative_products(item, products)
-    # --- NEW: ALTERNATIVE PRODUCTS LOGIC END ---
-
-    for item in products:
-        # Data serialization taaki Wishlist/Cart functionality na tute
-        item['json_data'] = json.dumps(item)
-
-    # Recent Searches Update logic (Strictly Keeping Existing Code)
-    if query:
-        recent = request.session.get('recent_searches', [])
-        if query not in recent:
-            recent.insert(0, query)
-            request.session['recent_searches'] = recent[:5]
-    
-    context = {
-        'products': products, 
-        'query': query, 
-        'sort': sort_option, 
-        'location': location
-    }
-    
-    # Purane template name 'search.html' ko hi return kar raha hoon
-    return render(request, 'search.html', context)
-
 # Category clicks ko manage karne ke liye (behaving exactly like search)
 def category_view(request, category_name):
     # Category clicks ko query ki tarah treat karenge
@@ -407,7 +273,6 @@ def category_view(request, category_name):
     # Same search template use kar rahe hain consistent results ke liye
     return render(request, 'search.html', context)
 
-
 # --- CART & UTILS ---
 @login_required(login_url='login')
 def add_to_cart(request):
@@ -426,94 +291,256 @@ def add_to_cart(request):
             messages.success(request, "Added to Cart! 🛒")
     return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-@login_required(login_url='login')
-def view_cart(request):
-    cart_items = CartItem.objects.filter(user=request.user).order_by('-added_at')
-    total_price = sum(float(re.sub(r'[^\d.]', '', str(item.product_data.get('price', 0)))) * item.quantity for item in cart_items)
-    return render(request, 'cart.html', {'cart_items': cart_items, 'total_price': total_price})
-
-
-
-
-
-def set_location(request):
-    if request.method == "POST":
-        loc = request.POST.get('location')
-        request.session['location'] = loc
-        return redirect('home')
-    
-def get_optimized_cart_v2(cart_items):
-    import re
-    grouped_data = {}
-    original_total = 0
-
-    if not cart_items:
-        return {"optimized": False, "optimized_items": [], "optimized_total": "0.00", "savings": 0}
-
-    for item in cart_items:
-        data = item.product_data
-        p_str = str(data.get('price', '0'))
-        price = float(re.sub(r'[^\d.]', '', p_str)) if any(c.isdigit() for c in p_str) else 0.0
-        
-        # KEYWORD MATCHING: Pehle 7-8 letters se match karein (e.g., "Peanut")
-        full_name = data.get('title', 'Unknown Product').strip()
-        match_key = full_name.lower()[:8] 
-        
-        source = data.get('source', 'Unknown')
-        qty = item.quantity
-        original_total += (price * qty)
-
-        if match_key not in grouped_data:
-            grouped_data[match_key] = {
-                'display_name': full_name,
-                'best_platform': source,
-                'price': price,
-                'qty': qty
-            }
-        else:
-            # Agar wahi product dusri jagah sasta hai, toh update karein
-            if price < grouped_data[match_key]['price']:
-                grouped_data[match_key]['price'] = price
-                grouped_data[match_key]['best_platform'] = source
-
-    optimized_items = list(grouped_data.values())
-    optimized_total_val = sum(i['price'] * i['qty'] for i in optimized_items)
-    savings = original_total - optimized_total_val
-
-    return {
-        "optimized": savings > 0.5, # Thoda bhi bacha toh dikhao
-        "optimized_items": optimized_items,
-        "optimized_total": f"{optimized_total_val:,.2f}",
-        "savings": int(savings)
-    }
-
-
-from .utils import get_alternative_products
-import json
 
 def search_results(request):
+    # SEARCH logic: query, sort aur location parameters le rahe hain
     query = request.GET.get('q', '')
-    sort_option = request.GET.get('sort', 'relevance')
+    sort_option = request.GET.get('sort', 'relevance') # Default relevance
     location = request.session.get('location', 'India')
     
-    # Products fetch karo
-    products = fetch_products(query, location=location, sort_by=sort_option)
+    # 1. Products fetch karo
+    all_products = fetch_products(query, location=location, sort_by=sort_option)
     
+    # 2. 🚀 CLEANING LOGIC: Sirf wahi products rakhenge jinki price 0 ya blank nahi hai
+    products = [p for p in all_products if p.get('price') not in ["0", 0, "₹0", "0.0", "", None]]
+
     if products:
-        # Step A: Pehle Alternatives nikalein
+        # 3. Step A: Pehle Alternatives nikalein
+        # Hum 'products' (cleaned list) ko as a database bhej rahe hain
         for item in products:
             item['alternatives'] = get_alternative_products(item, products)
             
-        # Step B: Phir JSON data banayein (taaki alternatives bhi JS mein chale jayein)
+        # 4. Step B: Data serialization (taaki alternatives bhi JS/Wishlist/Cart mein chale jayein)
         for item in products:
             item['json_data'] = json.dumps(item)
 
-        # Step C: Recommendation mark karein
+        # 5. Step C: Recommendation logic (Sorting & Marking)
         if sort_option == 'relevance':
             products.sort(key=lambda x: (float(x.get('rating', 0)) * 10) - (float(x.get('extracted_price', 0)) / 1000), reverse=True)
-        products[0]['recommended'] = True
+        
+        # do not recommend clean & sorted product
+        if products:
+            products[0]['recommended'] = True
 
-    context = {'products': products, 'query': query, 'sort': sort_option, 'location': location}
-    print(products[0].get('alternatives'))
+    # 6. Recent Searches Update logic (Strictly keeping your existing code)
+    if query:
+        recent = request.session.get('recent_searches', [])
+        if query not in recent:
+            recent.insert(0, query)
+            request.session['recent_searches'] = recent[:5]
+    
+    # Context set 
+    context = {
+        'products': products, 
+        'query': query, 
+        'sort': sort_option, 
+        'location': location
+    }
+    
+    #  for Debugging  (Optional)
+    if products:
+        print(f"Total cleaned products: {len(products)}")
+        # print(products[0].get('alternatives'))
 
+    # Final template return
     return render(request, 'search.html', context)
+
+ 
+
+@login_required(login_url='login')
+def view_cart(request):
+    # --- 1. Database & Session Fetching ---
+    cart_items = CartItem.objects.filter(user=request.user).order_by('-added_at')
+    session_cart = request.session.get('cart', [])
+    
+    comparison = ""
+    total_price = 0
+
+    # Price string to float convertor
+    def clean_price(price_str):
+        try:
+            # only no. and decimal points (e.g., "₹1,200" -> 1200.0)
+            return float(re.sub(r'[^\d.]', '', str(price_str)))
+        except: 
+            return 0.0
+
+    # --- 2. Total Price Calculation & Comparison Data Preparation ---
+    item_list = []
+    recommendations_manual = []
+    optimized_total_manual = 0
+
+    if cart_items.exists():
+        for item in cart_items:
+            # Price cleaning
+            p_val = clean_price(item.product_data.get('price', 0))
+            
+            # Normal Total Calculation
+            total_price += (p_val * item.quantity)
+            
+            # Comparison list ke liye
+            item_list.append({
+                'title': item.product_data.get('title', 'Product'),
+                'price': p_val,
+                'source': item.product_data.get('source', 'Unknown')
+            })
+
+            # Manual Optimization Logic (Feature 4)
+            best_price = p_val # Initial value
+            optimized_total_manual += (best_price * item.quantity)
+            recommendations_manual.append({
+                'title': item.product_data.get('title'),
+                'platform': item.product_data.get('source'),
+                'price': best_price
+            })
+
+        # --- 3. Comparison Logic (Winner Find karna) ---
+        if len(item_list) >= 2:
+            sorted_items = sorted(item_list, key=lambda x: x['price'])
+            cheapest = sorted_items[0]
+            next_best = sorted_items[1]
+            
+            if cheapest['price'] > 0:
+                diff = next_best['price'] - cheapest['price']
+                if diff > 0:
+                    comparison = f"Decision Made: '{cheapest['title'][:30]}...' is the winner! It's ₹{int(diff)} cheaper. We recommend {cheapest['source']}."
+                else:
+                    comparison = "Multiple products have the same lowest price."
+            else:
+                comparison = "Add valid priced products to see comparison."
+
+    # Savings calculation for manual logic
+    total_savings_manual = total_price - optimized_total_manual
+
+    # --- 🚀 4. Advanced Multi-App Optimization Integration ---
+    # Naye logic call yahan hain (Passing cart_items to external utility functions)
+    optimization_data = optimize_cart(cart_items) if 'optimize_cart' in globals() else {'optimized_items': [], 'optimized_total': 0, 'savings': 0, 'optimized': False, 'label': ''}
+    smart_logic = get_optimized_cart_v2(cart_items) if 'get_optimized_cart_v2' in globals() else {'optimized_items': [], 'optimized_total': 0, 'savings': 0, 'optimized': False}
+
+    # --- 5. Final Context & Rendering ---
+    context = {
+        'cart_items': cart_items,
+        'cart': session_cart,
+        'total_price': f"{total_price:,.2f}", # Formatting for UI
+        'comparison': comparison,
+        
+        # Manual Optimization Data
+        'optimized_recommendations': recommendations_manual,
+        'optimized_total_manual': f"{optimized_total_manual:,.2f}",
+        'total_savings_manual': int(total_savings_manual),
+
+        # Advanced Optimization Data (v1)
+        'optimized_items': optimization_data.get('optimized_items'),
+        'optimized_total': optimization_data.get('optimized_total'),
+        'total_savings': optimization_data.get('savings'),
+        'is_optimized': optimization_data.get('optimized'),
+        'opt_label': optimization_data.get('label'),
+
+        # Smart Logic Data (v2)
+        'smart_optimized_items': smart_logic.get('optimized_items'),
+        'smart_optimized_total': smart_logic.get('optimized_total'),
+        'smart_savings': smart_logic.get('savings'),
+        'smart_is_optimized': smart_logic.get('optimized'),
+    }
+    
+    return render(request, 'cart.html', context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# import json
+# from django.http import JsonResponse
+# from django.shortcuts import redirect
+# from django.views.decorators.csrf import csrf_exempt
+
+# @csrf_exempt
+# def set_location(request):
+#     """
+#     User ki location (pincode, coordinates ya simple city name) 
+#     ko session mein save karne ke liye merged logic.
+#     """
+#     if request.method == 'POST':
+#         try:
+#             # --- 1. Handling Normal Form Submission (request.POST) ---
+#             loc = request.POST.get('location')
+#             if loc:
+#                 request.session['location'] = loc
+#                 request.session['location_method'] = 'manual_form'
+#                 # Agar normal form hai toh redirect karega home par
+#                 return redirect('home')
+
+#             # --- 2. Handling AJAX/JSON Submission (request.body) ---
+#             # Agar request.body khali nahi hai, toh JSON parse karo
+#             if request.body:
+#                 data = json.loads(request.body)
+#                 pincode = data.get('pincode')
+#                 lat = data.get('lat')
+#                 lng = data.get('lng')
+#                 location_name = data.get('location') # Agar JSON mein bhi 'location' bheja ho
+
+#                 # A. Agar Pincode ya Location Name manually bheja gaya hai JSON mein
+#                 if pincode or location_name:
+#                     final_loc = pincode if pincode else location_name
+#                     request.session['user_pincode'] = pincode
+#                     request.session['location'] = final_loc # Dono session keys update kar rahe hain
+#                     request.session['location_method'] = 'manual_ajax'
+#                     return JsonResponse({"status": "success", "message": f"Location set to {final_loc}"})
+
+#                 # B. Agar Geolocation (GPS) use ki gayi hai
+#                 elif lat and lng:
+#                     request.session['user_pincode'] = "Detected" 
+#                     request.session['user_lat'] = lat
+#                     request.session['user_lng'] = lng
+#                     request.session['location'] = "GPS Location"
+#                     request.session['location_method'] = 'gps'
+#                     return JsonResponse({"status": "success", "message": "GPS Location saved"})
+
+#             return JsonResponse({"status": "error", "message": "Invalid data provided"}, status=400)
+
+#         except Exception as e:
+#             # Agar JSON parse error ho ya koi aur issue
+#             return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+#     # Agar koi GET request kare
+#     return JsonResponse({"status": "error", "message": "Only POST allowed"}, status=405)
+
+
